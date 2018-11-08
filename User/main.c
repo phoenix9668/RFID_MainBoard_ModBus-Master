@@ -19,7 +19,10 @@
 uint8_t state=0;
 uint16_t Tamperature_Result[3];
 uint16_t Switch_Result;
-uint8_t result;
+uint8_t pt03_result;
+uint8_t io222_result;
+extern uint8_t PCCommand[PCCOMMAND_LENGTH];	// 接收上位机命令数组
+uint16_t baseaddr;
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
@@ -41,46 +44,55 @@ int main(void)
 
   while (1)
   {
-		//使用Read Input Registers功能，读取温度采集器数据
-		//从机地址0xFE，寄存器地址0x00，连续读3个温度
-		result = ModbusMaster_readInputRegisters(0xFE,0x00,0x03);
-		if (result == 0x00)
+		if(state == 0)
 		{
-			Tamperature_Result[0] = ModbusMaster_getResponseBuffer(0x00);
-			Tamperature_Result[1] = ModbusMaster_getResponseBuffer(0x01);
-			Tamperature_Result[2] = ModbusMaster_getResponseBuffer(0x02);
+			pt03_result = ModbusMaster_readInputRegisters(PCCommand[2],0x0000,0x0003);//使用Read Input Registers功能，读取温度采集器数据，从机地址0xFE，寄存器地址0x0000，连续读3个温度
+			if (pt03_result == 0x00)
+			{
+				Tamperature_Result[0] = ModbusMaster_getResponseBuffer(0x00);
+				Tamperature_Result[1] = ModbusMaster_getResponseBuffer(0x01);
+				Tamperature_Result[2] = ModbusMaster_getResponseBuffer(0x02);
+			}
+			io222_result = ModbusMaster_readDiscreteInputs(PCCommand[3],0x0000,0x0001);//使用Read Discrete Input功能，读取接近开关状态，从机地址0xFE，寄存器地址0x00，读1个字节
+			if (io222_result == 0x00)
+			{
+				Switch_Result = ModbusMaster_getResponseBuffer(0x00);
+			}
 		}
-		//使用Read Discrete Input功能，读取接近开关状态
-		//从机地址0xFE，寄存器地址0x00，读1个字节
-		result = ModbusMaster_readDiscreteInputs(0xFE,0x00,0x01);
-		if (result == 0x00)
+		else if(state == 1)
 		{
-			Switch_Result = ModbusMaster_getResponseBuffer(0x00);
+			Read_BaseAddr(PCCommand[2]);
+			Send_Read_Address(PCCommand[2]);
+			state = 0;
+			LED_COM_OFF();
 		}
-			HAL_Delay(1000);
+		else if(state == 2)
+		{
+			Read_BaseAddr(PCCommand[3]);
+			Send_Read_Address(PCCommand[3]);
+			state = 0;
+			LED_COM_OFF();
+		}
+		else if(state == 3)
+		{
+			baseaddr = (uint16_t)(0xFF00 & PCCommand[4]<<8)+(uint16_t)(0x00FF & PCCommand[5]);
+			Set_BaseAddr(PCCommand[2],baseaddr);
+			Read_BaseAddr(PCCommand[5]);
+			Send_Set_Address(PCCommand[2]);
+			state = 0;
+			LED_COM_OFF();
+		}
+		else if(state == 4)
+		{
+			baseaddr = (uint16_t)(0xFF00 & PCCommand[6]<<8)+(uint16_t)(0x00FF & PCCommand[7]);
+			Set_BaseAddr(PCCommand[3],baseaddr);
+			Read_BaseAddr(PCCommand[7]);
+			Send_Set_Address(PCCommand[3]);
+			state = 0;
+			LED_COM_OFF();
+		}		
+		HAL_Delay(1000);
   }
-
-//	while(1)
-//	{
-//		for (i=0; i<PCCOMMAND_LENGTH; i++) // clear array
-//			{PCCommand[i] = 0;}
-//		Usart_RecArray(COM2_USART, PCCommand);/* 等待串口接收数据完毕 */
-//		for(i=0; i<PCCOMMAND_LENGTH; i++)// for test
-//		{
-//			printf("%x ",PCCommand[i]);
-//		}
-//		printf("\n");
-//		if(PCCommand[0] == 0xAB && PCCommand[1] == 0xCD)//begin index
-//		{
-//			Usart_SendString(COM2_USART,"start transfer\n");
-//			LED_STA_ON();
-//		}
-//		else if(PCCommand[0] == 0xE5 && PCCommand[1] == 0x5E)
-//		{
-//			Usart_SendString(COM2_USART,"fram transfer\n");
-//			LED_STA_OFF();
-//		}
-//	}
 }
 
 /**

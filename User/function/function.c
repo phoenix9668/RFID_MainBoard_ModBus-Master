@@ -21,13 +21,24 @@ __IO uint32_t uwTick;
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 uint8_t i;
+uint8_t result_read;
+uint8_t result_write;
 uint8_t PCCommand[PCCOMMAND_LENGTH];	// 接收上位机命令数组
+uint8_t SendBuffer[SEND_LENGTH] = {0};// 发送数据包
+extern uint8_t state;
+extern uint16_t Tamperature_Result[3];
+extern uint16_t Switch_Result;
+extern uint8_t pt03_result;
+extern uint8_t io222_result;
+uint16_t BaseAddr_Result;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
-/*===========================================================================
-* 函数: System_Initial() => 初始化系统所有外设                             	*
-============================================================================*/
+/**
+  * @brief  System_Initial() => 初始化系统所有外设
+  * @param  None
+  * @retval None
+  */
 void System_Initial(void)
 {
 		GPIO_Config();         			// 初始化GPIO
@@ -143,7 +154,7 @@ void HAL_Delay(__IO uint32_t Delay)
   * @param None
   * @retval None
   */
-void GPRS_Rece_Handler()
+void GPRS_Rece_Handler(void)
 {
 	for (i=0; i<PCCOMMAND_LENGTH; i++) // clear array
 		{PCCommand[i] = 0;}
@@ -155,14 +166,144 @@ void GPRS_Rece_Handler()
 	printf("\n");
 	if(PCCommand[0] == 0xAB && PCCommand[1] == 0xCD)//begin index
 	{
-		Usart_SendString(MOD_USART,"start transfer\n");
+		Usart_SendString(MOD_USART,"read data\n");
 		LED_STA_ON();
+		Send_Data();
+		LED_STA_OFF();
 	}
 	else if(PCCommand[0] == 0xE5 && PCCommand[1] == 0x5E)
 	{
-		Usart_SendString(MOD_USART,"fram transfer\n");
-		LED_STA_OFF();
+		Usart_SendString(MOD_USART,"read base address 1\n");
+		LED_COM_ON();
+		state = 1;
+	}
+	else if(PCCommand[0] == 0xE5 && PCCommand[1] == 0xAE)
+	{
+		Usart_SendString(MOD_USART,"read base address 2\n");
+		LED_COM_ON();
+		state = 2;
+	}	
+	else if(PCCommand[0] == 0xE5 && PCCommand[1] == 0xA5)
+	{
+		Usart_SendString(MOD_USART,"configure base address 1\n");
+		LED_COM_ON();
+		state = 3;
+	}
+	else if(PCCommand[0] == 0xE5 && PCCommand[1] == 0xAA)
+	{
+		Usart_SendString(MOD_USART,"configure base address 2\n");
+		LED_COM_ON();
+		state = 4;
 	}
 }
+
+/**
+  * @brief Read_BaseAddr(uint8_t SlaveID)
+  * @param uint8_t SlaveID
+  * @retval None
+  */
+void Read_BaseAddr(uint8_t SlaveID)
+{
+		//使用Read Holding Registers功能，读设备基地址
+		//从机地址0xFE，寄存器地址0x03EA，查询1个数量
+		result_read = ModbusMaster_readHoldingRegisters(SlaveID,0x03EA,0x0001);
+		if (result_read == 0x00)
+		{
+			BaseAddr_Result = ModbusMaster_getResponseBuffer(0x00);
+		}
+}
+
+/**
+  * @brief Set_BaseAddr(uint8_t SlaveID,uint16_t u16Value)
+  * @param uint8_t SlaveID
+  * @retval None
+  */
+void Set_BaseAddr(uint8_t SlaveID,uint16_t u16Value)
+{
+		//使用Write Multiple Registers功能，设置设备基地址
+		//从机地址0xFE，寄存器地址0x03EA，写1个数量
+		ModbusMaster_clearTransmitBuffer();
+		ModbusMaster_setTransmitBuffer(0,u16Value);
+		result_write = ModbusMaster_writeMultipleRegisters(SlaveID,0x03EA,0x0001);
+}
+
+/**
+  * @brief Send_Data.
+  * @param None
+  * @retval None
+  */
+void Send_Data(void)
+{
 	
+	for (i=0; i<SEND_LENGTH; i++) // clear array
+		{SendBuffer[i] = 0;}
+	
+		SendBuffer[0] = 0xAB;
+		SendBuffer[1] = 0xCD;
+		SendBuffer[2] = pt03_result;
+		SendBuffer[3] = io222_result;
+		SendBuffer[4] = (uint8_t)(0xFF & Tamperature_Result[0]>>8);
+		SendBuffer[5] = (uint8_t)(0xFF & Tamperature_Result[0]);
+		SendBuffer[6] = (uint8_t)(0xFF & Tamperature_Result[1]>>8);
+		SendBuffer[7] = (uint8_t)(0xFF & Tamperature_Result[1]);
+		SendBuffer[8] = (uint8_t)(0xFF & Tamperature_Result[2]>>8);
+		SendBuffer[9] = (uint8_t)(0xFF & Tamperature_Result[2]);
+		SendBuffer[10] = (uint8_t)(0xFF & Switch_Result>>8);
+		SendBuffer[11] = (uint8_t)(0xFF & Switch_Result);
+	for(i=0; i<SEND_LENGTH; i++)
+		{
+			printf("%x ",SendBuffer[i]);
+		}
+	printf("\n");		
+}
+
+/**
+  * @brief Send_Read_Address.
+  * @param None
+  * @retval None
+  */
+void Send_Read_Address(uint8_t SlaveID)
+{
+	
+	for (i=0; i<SEND_LENGTH; i++) // clear array
+		{SendBuffer[i] = 0;}
+	
+		SendBuffer[0] = 0xE5;
+		SendBuffer[1] = 0x5E;
+		SendBuffer[2] = result_read;
+		SendBuffer[3] = SlaveID;
+		SendBuffer[4] = (uint8_t)(0xFF & BaseAddr_Result>>8);
+		SendBuffer[5] = (uint8_t)(0xFF & BaseAddr_Result);
+	for(i=0; i<SEND_LENGTH; i++)
+		{
+			printf("%x ",SendBuffer[i]);
+		}
+	printf("\n");		
+}
+
+/**
+  * @brief Send_Set_Address.
+  * @param None
+  * @retval None
+  */
+void Send_Set_Address(uint8_t SlaveID)
+{
+	
+	for (i=0; i<SEND_LENGTH; i++) // clear array
+		{SendBuffer[i] = 0;}
+	
+		SendBuffer[0] = 0xE5;
+		SendBuffer[1] = 0xA5;
+		SendBuffer[2] = result_write;
+		SendBuffer[3] = result_read;
+		SendBuffer[4] = SlaveID;
+		SendBuffer[5] = (uint8_t)(0xFF & BaseAddr_Result>>8);
+		SendBuffer[6] = (uint8_t)(0xFF & BaseAddr_Result);
+	for(i=0; i<SEND_LENGTH; i++)
+		{
+			printf("%x ",SendBuffer[i]);
+		}
+	printf("\n");		
+}
+
 /******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/

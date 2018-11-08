@@ -13,6 +13,7 @@
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
+#define SEND_LENGTH     12
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
 void System_Initial(void);
@@ -22,6 +23,11 @@ void IncTick(void);
 uint32_t GetTick(void);
 void HAL_Delay(__IO uint32_t Delay);
 void GPRS_Rece_Handler(void);
+void Read_BaseAddr(uint8_t SlaveID);
+void Set_BaseAddr(uint8_t SlaveID,uint16_t u16Value);
+void Send_Data(void);
+void Send_Read_Address(uint8_t SlaveID);
+void Send_Set_Address(uint8_t SlaveID);
 
 #define LED_RUN_PIN     		GPIO_Pin_4
 #define LED_STA_PIN      		GPIO_Pin_3
