@@ -28,8 +28,10 @@ uint8_t SendBuffer[SEND_LENGTH] = {0};// 发送数据包
 extern uint8_t state;
 extern uint16_t Tamperature_Result[3];
 extern uint16_t Switch_Result;
+extern uint16_t Analog_Result[2];
 extern uint8_t pt03_result;
-extern uint8_t io222_result;
+extern uint8_t di_result;
+extern uint8_t ai_result;
 uint16_t BaseAddr_Result;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
@@ -241,15 +243,20 @@ void Send_Data(void)
 		SendBuffer[0] = 0xAB;
 		SendBuffer[1] = 0xCD;
 		SendBuffer[2] = pt03_result;
-		SendBuffer[3] = io222_result;
-		SendBuffer[4] = (uint8_t)(0xFF & Tamperature_Result[0]>>8);
-		SendBuffer[5] = (uint8_t)(0xFF & Tamperature_Result[0]);
-		SendBuffer[6] = (uint8_t)(0xFF & Tamperature_Result[1]>>8);
-		SendBuffer[7] = (uint8_t)(0xFF & Tamperature_Result[1]);
-		SendBuffer[8] = (uint8_t)(0xFF & Tamperature_Result[2]>>8);
-		SendBuffer[9] = (uint8_t)(0xFF & Tamperature_Result[2]);
-		SendBuffer[10] = (uint8_t)(0xFF & Switch_Result>>8);
-		SendBuffer[11] = (uint8_t)(0xFF & Switch_Result);
+		SendBuffer[3] = di_result;
+		SendBuffer[4] = ai_result;
+		SendBuffer[5] = (uint8_t)(0xFF & Tamperature_Result[0]>>8);
+		SendBuffer[6] = (uint8_t)(0xFF & Tamperature_Result[0]);
+		SendBuffer[7] = (uint8_t)(0xFF & Tamperature_Result[1]>>8);
+		SendBuffer[8] = (uint8_t)(0xFF & Tamperature_Result[1]);
+		SendBuffer[9] = (uint8_t)(0xFF & Tamperature_Result[2]>>8);
+		SendBuffer[10] = (uint8_t)(0xFF & Tamperature_Result[2]);
+		SendBuffer[11] = (uint8_t)(0xFF & Switch_Result>>8);
+		SendBuffer[12] = (uint8_t)(0xFF & Switch_Result);
+		SendBuffer[13] = (uint8_t)(0xFF & Analog_Result[0]>>8);
+		SendBuffer[14] = (uint8_t)(0xFF & Analog_Result[0]);
+		SendBuffer[15] = (uint8_t)(0xFF & Analog_Result[1]>>8);
+		SendBuffer[16] = (uint8_t)(0xFF & Analog_Result[1]);
 	for(i=0; i<SEND_LENGTH; i++)
 		{
 			printf("%x ",SendBuffer[i]);

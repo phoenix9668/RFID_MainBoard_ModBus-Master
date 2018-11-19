@@ -113,7 +113,7 @@ uint8_t Modbus_Master_Read(void)
 void Modbus_Master_Write(uint8_t *buf,uint8_t length)
 {
 	uint8_t i;
-//	RS485_DIR1_ON();
+	RS485_DIR1_ON();
 	for(i=0;i<length;i++)
 	{
 		USART_SendData(COM2_USART, *(buf + i));	

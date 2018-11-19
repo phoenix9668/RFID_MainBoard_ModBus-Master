@@ -19,8 +19,10 @@
 uint8_t state=0;
 uint16_t Tamperature_Result[3];
 uint16_t Switch_Result;
+uint16_t Analog_Result[2];
 uint8_t pt03_result;
-uint8_t io222_result;
+uint8_t di_result;
+uint8_t ai_result;
 extern uint8_t PCCommand[PCCOMMAND_LENGTH];	// 接收上位机命令数组
 uint16_t baseaddr;
 /* Private macro -------------------------------------------------------------*/
@@ -44,53 +46,59 @@ int main(void)
 
   while (1)
   {
-		if(state == 0)
+		switch( state )
 		{
-			pt03_result = ModbusMaster_readInputRegisters(PCCommand[2],0x0000,0x0003);//使用Read Input Registers功能，读取温度采集器数据，从机地址0xFE，寄存器地址0x0000，连续读3个温度
-			if (pt03_result == 0x00)
-			{
-				Tamperature_Result[0] = ModbusMaster_getResponseBuffer(0x00);
-				Tamperature_Result[1] = ModbusMaster_getResponseBuffer(0x01);
-				Tamperature_Result[2] = ModbusMaster_getResponseBuffer(0x02);
-			}
-			io222_result = ModbusMaster_readDiscreteInputs(PCCommand[3],0x0000,0x0001);//使用Read Discrete Input功能，读取接近开关状态，从机地址0xFE，寄存器地址0x00，读1个字节
-			if (io222_result == 0x00)
-			{
-				Switch_Result = ModbusMaster_getResponseBuffer(0x00);
-			}
+			case 0:
+				pt03_result = ModbusMaster_readInputRegisters(PCCommand[2],0x0000,0x0003);//使用Read Input Registers功能，读取温度采集器数据，从机地址0xFE，寄存器地址0x0000，连续读3个温度
+				if (pt03_result == 0x00)
+				{
+					Tamperature_Result[0] = ModbusMaster_getResponseBuffer(0x00);
+					Tamperature_Result[1] = ModbusMaster_getResponseBuffer(0x01);
+					Tamperature_Result[2] = ModbusMaster_getResponseBuffer(0x02);
+				}
+				HAL_Delay(100);
+				di_result = ModbusMaster_readDiscreteInputs(PCCommand[3],0x0000,0x0002);//使用Read Discrete Input功能，读取接近开关状态，从机地址0xFE，寄存器地址0x00，读2个bit
+				if (di_result == 0x00)
+				{
+					Switch_Result = ModbusMaster_getResponseBuffer(0x00);
+				}
+				HAL_Delay(100);
+				ai_result = ModbusMaster_readInputRegisters(PCCommand[3],0x0000,0x0002);//使用Read Input Registers功能，读取模拟量，从机地址0xFE，寄存器地址0x00，读2个模拟量数量
+				if (ai_result == 0x00)
+				{
+					Analog_Result[0] = ModbusMaster_getResponseBuffer(0x00);
+					Analog_Result[1] = ModbusMaster_getResponseBuffer(0x01);
+				}
+				break;
+			case 1:
+				Read_BaseAddr(PCCommand[2]);
+				Send_Read_Address(PCCommand[2]);
+				state = 0;
+				LED_COM_OFF();
+				break;
+			case 2:
+				Read_BaseAddr(PCCommand[3]);
+				Send_Read_Address(PCCommand[3]);
+				state = 0;
+				LED_COM_OFF();
+				break;
+			case 3:
+				baseaddr = (uint16_t)(0xFF00 & PCCommand[4]<<8)+(uint16_t)(0x00FF & PCCommand[5]);
+				Set_BaseAddr(PCCommand[2],baseaddr);
+				Read_BaseAddr(PCCommand[5]);
+				Send_Set_Address(PCCommand[2]);
+				state = 0;
+				LED_COM_OFF();
+				break;
+			case 4:
+				baseaddr = (uint16_t)(0xFF00 & PCCommand[6]<<8)+(uint16_t)(0x00FF & PCCommand[7]);
+				Set_BaseAddr(PCCommand[3],baseaddr);
+				Read_BaseAddr(PCCommand[7]);
+				Send_Set_Address(PCCommand[3]);
+				state = 0;
+				LED_COM_OFF();
+				break;
 		}
-		else if(state == 1)
-		{
-			Read_BaseAddr(PCCommand[2]);
-			Send_Read_Address(PCCommand[2]);
-			state = 0;
-			LED_COM_OFF();
-		}
-		else if(state == 2)
-		{
-			Read_BaseAddr(PCCommand[3]);
-			Send_Read_Address(PCCommand[3]);
-			state = 0;
-			LED_COM_OFF();
-		}
-		else if(state == 3)
-		{
-			baseaddr = (uint16_t)(0xFF00 & PCCommand[4]<<8)+(uint16_t)(0x00FF & PCCommand[5]);
-			Set_BaseAddr(PCCommand[2],baseaddr);
-			Read_BaseAddr(PCCommand[5]);
-			Send_Set_Address(PCCommand[2]);
-			state = 0;
-			LED_COM_OFF();
-		}
-		else if(state == 4)
-		{
-			baseaddr = (uint16_t)(0xFF00 & PCCommand[6]<<8)+(uint16_t)(0x00FF & PCCommand[7]);
-			Set_BaseAddr(PCCommand[3],baseaddr);
-			Read_BaseAddr(PCCommand[7]);
-			Send_Set_Address(PCCommand[3]);
-			state = 0;
-			LED_COM_OFF();
-		}		
 		HAL_Delay(1000);
   }
 }
