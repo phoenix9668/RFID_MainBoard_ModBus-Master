@@ -300,7 +300,7 @@ void Send_Set_Address(uint8_t SlaveID)
 		{SendBuffer[i] = 0;}
 	
 		SendBuffer[0] = 0xE5;
-		SendBuffer[1] = 0xA5;
+		SendBuffer[1] = 0xAE;
 		SendBuffer[2] = result_write;
 		SendBuffer[3] = result_read;
 		SendBuffer[4] = SlaveID;
